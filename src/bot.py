@@ -81,7 +81,8 @@ class Bot:
 	def trim_text(self, text):
 		text = text.split(".")
 		text.pop()
-		text.pop()
+		while len('.'.join(text) + '.') > 275:
+			text.pop()
 		text = '.'.join(text)
 		text = text + '.'
 		
