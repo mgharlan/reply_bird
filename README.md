@@ -14,6 +14,5 @@ Create a virtual environment called venv in the twitter_bird directory and activ
 # in twitter_bird
 (venv) $ pip install beautifulsoup4
 (venv) $ pip install pandas
-(venv) $ pip install requests
 (venv) $ pip install tweepy
 ```
