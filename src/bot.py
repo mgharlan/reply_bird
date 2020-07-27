@@ -7,6 +7,7 @@ from pathlib import Path
 import random
 import requests
 import sys
+import time
 import tweepy
 
 class Bot:
@@ -24,8 +25,18 @@ class Bot:
 	def run(self):
 		self.verify_credentials()
 		
-		URL = self.get_random()
-		self.send_bird(URL)
+		count = 0
+		while True:
+			if count == 200: #count == 0 or:
+				URL = self.get_random()
+				self.send_bird(URL)
+				
+				count = 0
+			
+			self.reply_to_mentions()
+			logging.info('waiting to check mentions')
+			time.sleep(60)
+			count += 1
 		
 	def get_random(self):
 		logging.info('picking a random bird')
@@ -36,7 +47,7 @@ class Bot:
 		logging.info(f'{Path(URL).stem} picked')
 		return URL
 		
-	def send_bird(self, URL):
+	def send_bird(self, URL, tweet_id=None):
 		page = requests.get(URL)
 		soup = BeautifulSoup(page.content, 'html.parser')
 		
@@ -51,8 +62,16 @@ class Bot:
 			file.close()
 
 			image = 'bird_data/bird.jpg'
-			tweet_status = self.api.update_with_media(image, status=URL)
+			
+			if tweet_id == None:
+				tweet_status = self.api.update_with_media(image, status=URL)
+				
+			else:
+				tweet_status = self.api.update_with_media(image, status=URL,
+					in_reply_to_status_id=tweet_id, auto_populate_reply_metadata=True)
+					
 			image_sent = True
+			logging.info(f'{Path(URL).stem} image sent')
 			
 			os.remove("bird_data/bird.jpg")
 			
@@ -70,15 +89,20 @@ class Bot:
 		try:
 			result = soup.find('div', class_="hide-for-tiny hide-for-small hide-for-medium")
 			text = result.text.strip('\t \n')
+			
 			if len(text) > 275:
 				text = self.trim_text(text)
+				
 			self.api.update_status(status=text, in_reply_to_status_id=tweet_status.id)
+			
+			logging.info(f'{Path(URL).stem} text sent')
 			
 		except Exception as e:
 			logging.error(e, exc_info=True)
 			logging.info(URL + ', problem with bird text')
 
 	def trim_text(self, text):
+		logging.info(f'text too long: {len(text)}')
 		text = text.split(".")
 		text.pop()
 		while len('.'.join(text) + '.') > 275:
@@ -86,7 +110,37 @@ class Bot:
 		text = '.'.join(text)
 		text = text + '.'
 		
+		logging.info(f'text trimmed to {len(text)}')
+		
 		return text
+
+	def reply_to_mentions(self):
+		logging.info('reading most recent mention id from file')
+		file = open('src/data.txt', 'r')
+		since_id = int(file.read())
+		file.close()
+		
+		logging.info('retrieving mentions')
+		new_since_id = since_id
+		
+		for tweet in tweepy.Cursor(self.api.mentions_timeline, since_id=since_id).items():
+			new_since_id = max(tweet.id, new_since_id)
+			if tweet.in_reply_to_status_id is not None:
+				continue
+				
+			else:
+				logging.info(f'replying to mention by {tweet.user.name}')
+			
+				if not tweet.user.following:
+					tweet.user.follow()
+				
+				URL = self.get_random()
+				self.send_bird(URL, tweet.id)
+				
+		file = open('src/data.txt', 'w')
+		file.write(str(new_since_id))
+		file.close()
+			
 
 	def verify_credentials(self):
 		try:
