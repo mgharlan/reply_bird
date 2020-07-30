@@ -27,7 +27,7 @@ class Bot:
 		
 		count = 0
 		while True:
-			if count == 200: #count == 0 or:
+			if count == 0 or count == 200:
 				URL = self.get_random()
 				self.send_bird(URL)
 				
