@@ -20,34 +20,44 @@ class Bot:
 
 		self.api = tweepy.API(auth)
 		
-		self.data = pd.read_csv("bird_data/bird_urls.csv")
-		
+		self.bird_data = pd.read_csv("bird_data/bird_urls.csv")
+	
 	def run(self):
 		self.verify_credentials()
 		
-		count = 0
 		while True:
-			if count == 0 or count == 200:
-				URL = self.get_random()
-				self.send_bird(URL)
-				
-				count = 0
-			
 			self.reply_to_mentions()
 			logging.info('waiting to check mentions')
 			time.sleep(60)
-			count += 1
 		
-	def get_random(self):
-		logging.info('picking a random bird')
+	def reply_to_mentions(self):
+		logging.info('reading most recent mention id from file')
+		file = open('src/data.txt', 'r')
+		since_id = int(file.read())
+		file.close()
 		
-		number = random.randint(0, self.data.shape[0])
+		logging.info('retrieving mentions')
+		new_since_id = since_id
 		
-		URL = self.data['BIRD URLs'][number]
-		logging.info(f'{Path(URL).stem} picked')
-		return URL
+		for tweet in tweepy.Cursor(self.api.mentions_timeline, since_id=since_id).items():
+			new_since_id = max(tweet.id, new_since_id)
+			if tweet.in_reply_to_status_id is not None:
+				continue
+				
+			else:
+				logging.info(f'replying to mention by {tweet.user.name}')
+			
+				if not tweet.user.following:
+					tweet.user.follow()
+				
+				URL = self.get_random()
+				self.send_bird(URL, tweet.id)
+				
+		file = open('src/data.txt', 'w')
+		file.write(str(new_since_id))
+		file.close()
 		
-	def send_bird(self, URL, tweet_id=None):
+	def send_bird(self, URL, tweet_id):
 		page = requests.get(URL)
 		soup = BeautifulSoup(page.content, 'html.parser')
 		
@@ -63,12 +73,8 @@ class Bot:
 
 			image = 'bird_data/bird.jpg'
 			
-			if tweet_id == None:
-				tweet_status = self.api.update_with_media(image, status=URL)
-				
-			else:
-				tweet_status = self.api.update_with_media(image, status=URL,
-					in_reply_to_status_id=tweet_id, auto_populate_reply_metadata=True)
+			tweet_status = self.api.update_with_media(image, status=URL,
+				in_reply_to_status_id=tweet_id, auto_populate_reply_metadata=True)
 					
 			image_sent = True
 			logging.info(f'{Path(URL).stem} image sent')
@@ -100,7 +106,7 @@ class Bot:
 		except Exception as e:
 			logging.error(e, exc_info=True)
 			logging.info(URL + ', problem with bird text')
-
+	
 	def trim_text(self, text):
 		logging.info(f'text too long: {len(text)}')
 		text = text.split(".")
@@ -113,35 +119,16 @@ class Bot:
 		logging.info(f'text trimmed to {len(text)}')
 		
 		return text
-
-	def reply_to_mentions(self):
-		logging.info('reading most recent mention id from file')
-		file = open('src/data.txt', 'r')
-		since_id = int(file.read())
-		file.close()
 		
-		logging.info('retrieving mentions')
-		new_since_id = since_id
+	def get_random(self):
+		logging.info('picking a random bird')
 		
-		for tweet in tweepy.Cursor(self.api.mentions_timeline, since_id=since_id).items():
-			new_since_id = max(tweet.id, new_since_id)
-			if tweet.in_reply_to_status_id is not None:
-				continue
-				
-			else:
-				logging.info(f'replying to mention by {tweet.user.name}')
-			
-				if not tweet.user.following:
-					tweet.user.follow()
-				
-				URL = self.get_random()
-				self.send_bird(URL, tweet.id)
-				
-		file = open('src/data.txt', 'w')
-		file.write(str(new_since_id))
-		file.close()
-			
-
+		number = random.randint(0, self.bird_data.shape[0])
+		
+		URL = self.bird_data['BIRD URLs'][number]
+		logging.info(f'{Path(URL).stem} picked')
+		return URL
+		
 	def verify_credentials(self):
 		try:
 			self.api.verify_credentials()
@@ -169,7 +156,7 @@ def prep_log(debug,console):
 	file_handler.setFormatter(formatter)
 	logger.addHandler(file_handler)
 	
-def parser():
+def setup():
 	parser = argparse.ArgumentParser()
 	parser.add_argument("-d", "--debug", help="DEBUG MODE", action="store_true")
 	parser.add_argument("-c", "--console", help="LOG TO CONSOLE", action="store_true")
@@ -178,6 +165,6 @@ def parser():
 	prep_log(argv.debug, argv.console)
 	
 if __name__ == "__main__":
-	parser()
+	setup()
 	bird = Bot()
 	bird.run()
