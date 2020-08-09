@@ -1,4 +1,4 @@
-# twitter_bird
+# reply_bird
 Ornithology Twitter Bot:
 Special thanks to the Audubon Society for all the bird data they have available on their website
 
