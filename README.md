@@ -4,14 +4,14 @@ Special thanks to the Audubon Society for all the bird data they have available 
 
 # Setup 
 ```bash
-$ git clone https://github.com/mgharlan/twitter_bird.git
-$ cd twitter_bird
+$ git clone https://github.com/mgharlan/reply_bird.git
+$ cd reply_bird
 ```
 
 Create a virtual environment called venv in the twitter_bird directory and activate the environment.
 
 ```bash
-# in twitter_bird
+# in reply_bird
 (venv) $ pip install beautifulsoup4
 (venv) $ pip install pandas
 (venv) $ pip install tweepy
