@@ -16,3 +16,9 @@ Create a virtual environment called venv in the twitter_bird directory and activ
 (venv) $ pip install pandas
 (venv) $ pip install tweepy
 ```
+
+# Run
+```
+# in reply_bird
+(venv) $ python3 src/bot.py
+```
